@@ -83,7 +83,7 @@ def build_train_op(DQN, Y, action, action_num, lr):
         batch_delta_linear = (batch_delta_abs - batch_delta_quadratic)*2
         batch_loss = batch_delta_linear + batch_delta_quadratic**2
         #batch_loss = (Y - DQN_acted)**2
-        loss = tf.reduce_mean(batch_loss)
+        loss = tf.reduce_sum(batch_loss)
         tf.add_to_collection("DQN_summaries", tf.scalar_summary("rm_action_0", action[0]))
         tf.add_to_collection("DQN_summaries", tf.scalar_summary("rm_average_loss", loss))
         tf.add_to_collection("DQN_summaries", tf.scalar_summary("rm_loss_0", batch_loss[0]))
