@@ -94,7 +94,7 @@ def build_train_op(DQN, Y, action, action_num, lr):
     opti = tf.train.RMSPropOptimizer(lr,0.95,0.95,0.01)
     grads = opti.compute_gradients(loss)
 
-    train_op = opti.apply_gradients(grads) # have to pass global_step ?????
+    train_op = opti.apply_gradients(grads)
 
     for grad, var in grads:
         if grad is not None:
