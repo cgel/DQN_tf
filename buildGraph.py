@@ -84,41 +84,6 @@ conv_layer_counter = [0]
 linear_layer_counter = [0]
 conditional_linear_layer_counter = [0]
 
-
-def add_conditional_relu_layer_no_gather(head, condition, condition_size, size, Collection, layer_name=None, weight_name=None):
-    assert len(head.get_shape()
-               ) == 2, "can't add a linear layer to this input"
-    if layer_name == None:
-        layer_name = "conditional_relu" + \
-            str(len(tf.get_collection(Collection + "_conditional_relus")))
-        tf.add_to_collection(Collection + "_conditional_relus", layer_name)
-    if weight_name == None:
-        weight_name = layer_name + "_W"
-    head_size = head.get_shape().as_list()[1]
-    w_size = [condition_size, head_size, size]
-    std = xavier_std(head_size, size)
-
-    w = get_var(weight_name, w_size, initializer=tf.truncated_normal_initializer(
-        stddev=std), Collection=Collection)
-
-    dynamic_batch_size = tf.shape(condition)[0]
-    condition_oh = tf.expand_dims(tf.one_hot(
-        condition, condition_size, 1., 0.), 1)
-    tiled_w = tf.tile(w, [dynamic_batch_size, 1, 1])
-    tiled_shape = tiled_w.get_shape()
-    tiled_reshaped = tf.reshape(tiled_w, tf.pack(
-        [dynamic_batch_size, condition_size, tiled_shape[1] * tiled_shape[2]]))
-    conditional_w = tf.batch_matmul(condition_oh, tiled_reshaped)
-    conditional_w = tf.reshape(conditional_w, tf.pack(
-        [dynamic_batch_size, tiled_shape[1], tiled_shape[2]]))
-    new_head = tf.nn.relu(
-        tf.batch_matmul(tf.expand_dims(head, 1), conditional_w, name=layer_name), name=layer_name + "_relu")
-
-    new_head = tf.squeeze(new_head, [1])
-    build_activation_summary(new_head, Collection + "_summaries")
-    return new_head
-
-
 #for the multiple calls to share variable, all variable names must be the same evey call
 def hidden_state_to_Q(hidden_state, _name, action_num, Collection):
     head = add_relu_layer(hidden_state, size=512, Collection=Collection,
@@ -133,11 +98,6 @@ def hidden_state_to_Q(hidden_state, _name, action_num, Collection):
     tf.add_to_collection(Collection + "_summaries",
                          tf.histogram_summary(_name, Q))
     return Q
-
-
-def add_conditional_relu_layer(
-    *args, **kwargs): return add_conditional_relu_layer_no_gather(*args, **kwargs)
-
 
 def createQNetwork(input_state, action, config, Collection=None):
     action_num = config.action_num
@@ -156,14 +116,9 @@ def createQNetwork(input_state, action, config, Collection=None):
     head = tf.reshape(
         head, [-1, h_conv3_shape[1] * h_conv3_shape[2] * h_conv3_shape[3]], name="conv3_flat")
 
-    #head = add_relu_layer(head, size=512, Collection=Collection)
-    #head = add_relu_layer(head, size=256, Collection=Collection)
     hidden_state = head
 
-    # the functions state -> Q, and future_state -> future_Q are the same and
-    # share parameters
     Q = hidden_state_to_Q(hidden_state, "Q", action_num, Collection)
-
     return Q
 
 
