@@ -142,9 +142,11 @@ def build_train_op(Q, Y, action, config):
         DQN_acted = tf.reduce_sum(
             Q * action_one_hot, reduction_indices=1, name='DQN_acted')
 
-        loss = tf.reduce_sum(
-            clipped_l2(Y, DQN_acted), name="Q_loss")
+        batch_loss = clipped_l2(Y, DQN_acted)
+        loss = tf.reduce_sum(batch_loss, name="Q_loss")
 
+        tf.add_to_collection("DQN_summaries", tf.scalar_summary(
+            "losses/Q_0", batch_loss[0]))
         tf.add_to_collection("DQN_summaries", tf.scalar_summary(
             "losses/Q", loss))
 
@@ -152,6 +154,10 @@ def build_train_op(Q, Y, action, config):
             "main/Y_0", Y[0]))
         tf.add_to_collection("DQN_summaries", tf.scalar_summary(
             "main/acted_Q_0", DQN_acted[0]))
+        tf.add_to_collection("DQN_summaries", tf.scalar_summary(
+            "main/acted_Q_avrg", tf.reduce_mean(DQN_acted) ))
+        tf.add_to_collection("DQN_summaries", tf.scalar_summary(
+            "main/Y_avrg", tf.reduce_mean(Y) ))
 
     opti = tf.train.RMSPropOptimizer(config.learning_rate, 0.95, 0.95, 0.01)
     grads = opti.compute_gradients(loss)
