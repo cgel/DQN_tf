@@ -6,8 +6,8 @@ parser.add_argument("-replay_memory_capacity", type=int, default=1000000)
 parser.add_argument("-steps_before_training", type=int, default=50000)
 parser.add_argument("-exploration_steps", type=int, default=1000000)
 parser.add_argument("-sync_rate", type=int, default=10000)
-parser.add_argument("-save_summary_rate", type=int, default=20000)
-parser.add_argument("-device", default="/gpu:1")
+parser.add_argument("-save_summary_rate", type=int, default=1000)
+parser.add_argument("-device", default="/gpu:0")
 parser.add_argument("-gamma", type=float, default=0.99)
 parser.add_argument("-learning_rate", type=float, default=0.00025)
 parser.add_argument("-initial_epsilon", type=float, default=1.)
@@ -124,7 +124,7 @@ def enqueue_from_RM():
         state_batch, action_batch, reward_batch, next_state_batch, terminal_batch, _ = RM.sample_transition_batch()
         if global_step % config.save_summary_rate == 0:
             QT_np, DQNT_summary_str = sess.run([QT, DQNT_summary_op], feed_dict={next_input_state_ph:next_state_batch})
-            summary_writter.add_summary(tf.Summary(value=[tf.Summary.Value(tag="main/r_max", simple_value=int(np.max(reward_batch)))]))
+            summary_writter.add_summary(tf.Summary(value=[tf.Summary.Value(tag="main/r_max", simple_value=int(np.max(reward_batch)))]), global_step)
             summary_writter.add_summary(DQNT_summary_str, global_step)
         else:
             QT_np = sess.run(QT, feed_dict={next_input_state_ph:next_state_batch})
@@ -173,7 +173,6 @@ sess.run(tf.initialize_variables(DQNT_params))
 sess.run(tf.initialize_all_variables())
 
 
-
 #geneate a new set of paths
 run_list = os.listdir("log")
 int_run_list = [int(r) for r in run_list] + [0]
@@ -189,11 +188,12 @@ summary_writter = tf.train.SummaryWriter(log_path, sess.graph, flush_secs=20)
 
 
 def e_greedy_action(epsilon, state):
-        if np.random.uniform() < epsilon:
-            action = random.randint(0, action_num - 1)
-        else:
-            action = np.argmax(sess.run(Q, feed_dict={input_state:state})[0])
-        return action
+    if np.random.uniform() < epsilon:
+        action = random.randint(0, action_num - 1)
+    else:
+        QS = sess.run(Q, feed_dict={input_state:state})[0]
+        action = np.argmax(QS)
+    return action
 
 def greedy_run(epsilon, n, use_planning=False):
     ale.reset_game()
@@ -214,20 +214,19 @@ def greedy_run(epsilon, n, use_planning=False):
         ale.reset_game()
     return R_list
 
-
 if args.load_checkpoint != "":
-    print("loading: " + args.load_checkpoint)
-    saver.restore(sess, "checkpoint/"+args.load_checkpoint)
-
+    ckpt_file = "checkpoint/" + args.load_checkpoint
+    print("loading: " +'"'+args.load_checkpoint+'"')
+    saver.restore(sess, ckpt_file)
 
 global_step = 0
 global_episode = 0
 logging = True
 
-
 t = time.time()
 num_episodes = 100000
 initial_episode = global_episode
+sess.run(sync_DQNT_op)
 for episode in range(global_episode, num_episodes + global_episode):
     global state
     state = np.zeros((1, 84, 84, config.buff_size), dtype=np.uint8)
