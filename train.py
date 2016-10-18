@@ -102,11 +102,11 @@ with tf.device(config.device):
         QT = createQNetwork(next_input_state_ph, action, config, "DQNT")
         DQNT_params = tf.get_collection("DQNT_weights")
         DQNT_params = tf.get_collection("DQNT_weights")
-        max_action_DQNT = tf.argmax(QT, 1)
+        max_QT = tf.reduce_max(QT, 1)
         tf.add_to_collection("DQNT_summaries", tf.scalar_summary(
             "main/next_Q_max", tf.reduce_max(QT)))
         tf.add_to_collection("DQNT_summaries", tf.scalar_summary(
-            "main/next_Q_0", max_action_DQNT[0]))
+            "main/next_Q_0", max_QT[0]))
 
     # DQN summary
     for i in range(action_num):
