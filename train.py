@@ -6,7 +6,7 @@ parser.add_argument("-replay_memory_capacity", type=int, default=1000000)
 parser.add_argument("-steps_before_training", type=int, default=50000)
 parser.add_argument("-exploration_steps", type=int, default=1000000)
 parser.add_argument("-sync_rate", type=int, default=10000)
-parser.add_argument("-save_summary_rate", type=int, default=5000)
+parser.add_argument("-save_summary_rate", type=int, default=20000)
 parser.add_argument("-device", default="/gpu:1")
 parser.add_argument("-gamma", type=float, default=0.99)
 parser.add_argument("-learning_rate", type=float, default=0.00025)
@@ -167,7 +167,7 @@ sess_config.allow_soft_placement = True
 sess_config.gpu_options.allow_growth = True
 sess_config.log_device_placement = False
 sess = tf.Session(config=sess_config)
-saver = tf.train.Saver(max_to_keep = 20)
+saver = tf.train.Saver(DQN_params, max_to_keep = 20)
 sess.run(tf.initialize_variables(DQN_params))
 sess.run(tf.initialize_variables(DQNT_params))
 sess.run(tf.initialize_all_variables())
@@ -248,7 +248,7 @@ for episode in range(global_episode, num_episodes + global_episode):
         state = preprocess(ale.getScreenGrayscale(), state)
         global_step += 1
     ep_duration = time.time() - ep_begin_t
-    if logging and episode%500 == 0 and episode != 0 or num_episodes == episode:
+    if logging and episode%100 == 0 and episode != 0 or num_episodes == episode:
         episode_online_summary = tf.Summary(value=[tf.Summary.Value(tag="online/epsilon", simple_value=get_epsilon()),
                                     tf.Summary.Value(tag="online/R", simple_value=R),
                                     tf.Summary.Value(tag="online/steps_in_episode", simple_value= global_step - episode_begining_step),
