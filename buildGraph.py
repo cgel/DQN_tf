@@ -101,7 +101,7 @@ def hidden_state_to_Q(hidden_state, _name, action_num, Collection):
 
 def createQNetwork(input_state, action, config, Collection=None):
     action_num = config.action_num
-    normalized = input_state / 256.
+    normalized = input_state / 128. -1.
     tf.add_to_collection(Collection + "_summaries", tf.histogram_summary(
         "normalized_input", normalized))
 
