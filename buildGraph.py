@@ -128,8 +128,8 @@ def clipped_l2(y, y_t, grad_clip=1):
         batch_delta_abs = tf.abs(batch_delta)
         batch_delta_quadratic = tf.minimum(batch_delta_abs, grad_clip)
         batch_delta_linear = (
-            batch_delta_abs - batch_delta_quadratic) * 2 * grad_clip
-        batch = batch_delta_linear + batch_delta_quadratic**2
+            batch_delta_abs - batch_delta_quadratic) * grad_clip
+        batch = batch_delta_linear + batch_delta_quadratic**2/2
     return batch
 
 
