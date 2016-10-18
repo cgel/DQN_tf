@@ -149,15 +149,17 @@ def build_train_op(Q, Y, action, config):
             "losses/Q_0", batch_loss[0]))
         tf.add_to_collection("DQN_summaries", tf.scalar_summary(
             "losses/Q", loss))
+        tf.add_to_collection("DQN_summaries", tf.scalar_summary(
+            "losses/Q_max", tf.reduce_max(batch_loss)))
 
         tf.add_to_collection("DQN_summaries", tf.scalar_summary(
             "main/Y_0", Y[0]))
         tf.add_to_collection("DQN_summaries", tf.scalar_summary(
             "main/acted_Q_0", DQN_acted[0]))
         tf.add_to_collection("DQN_summaries", tf.scalar_summary(
-            "main/acted_Q_avrg", tf.reduce_mean(DQN_acted) ))
+            "main/acted_Q_max", tf.reduce_max(DQN_acted) ))
         tf.add_to_collection("DQN_summaries", tf.scalar_summary(
-            "main/Y_avrg", tf.reduce_mean(Y) ))
+            "main/Y_max", tf.reduce_max(Y) ))
 
     opti = tf.train.RMSPropOptimizer(config.learning_rate, 0.95, 0.95, 0.01)
     grads = opti.compute_gradients(loss)
