@@ -233,16 +233,21 @@ for episode in range(global_episode, num_episodes + global_episode):
     state = preprocess(ale.getScreenGrayscale(), state)
     R = 0
     ep_begin_t = time.time()
-    isTerminal = False
+    terminal = False
+    pseudo_terminal = False
+    lives = ale.lives()
     episode_begining_step = global_step
-    while isTerminal == False:
+    while terminal == False:
         action = e_greedy_action(get_epsilon(), state)
         reward = ale.act(action_map[action])
         clipped_reward = max(-1, min(1, reward))
         R += reward
+        pseudo_terminal = False
         if ale.game_over():
-            isTerminal = True
-        RM.add(state[0, :, :, config.buff_size -1], action, clipped_reward, isTerminal)
+            terminal = True
+        if lives != ale.lives() or terminal:
+            pseudo_terminal = True
+        RM.add(state[0, :, :, config.buff_size -1], action, clipped_reward, pseudo_terminal)
         update_params()
         state = preprocess(ale.getScreenGrayscale(), state)
         global_step += 1
