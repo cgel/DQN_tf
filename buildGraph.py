@@ -84,10 +84,13 @@ conv_layer_counter = [0]
 linear_layer_counter = [0]
 conditional_linear_layer_counter = [0]
 
-#for the multiple calls to share variable, all variable names must be the same evey call
+# for the multiple calls to share variable, all variable names must be the
+# same evey call
+
+
 def hidden_state_to_Q(hidden_state, _name, action_num, Collection):
     head = add_relu_layer(hidden_state, size=512, Collection=Collection,
-                             layer_name="final_linear_" + _name, weight_name="final_linear_Q_W")
+                          layer_name="final_linear_" + _name, weight_name="final_linear_Q_W")
     # the last layer is linear without a relu
     head_size = head.get_shape().as_list()[1]
 
@@ -99,18 +102,19 @@ def hidden_state_to_Q(hidden_state, _name, action_num, Collection):
                          tf.histogram_summary(_name, Q))
     return Q
 
+
 def createQNetwork(input_state, action, config, Collection=None):
     action_num = config.action_num
-    normalized = input_state / 128. -1.
+    normalized = input_state / 128. - 1.
     tf.add_to_collection(Collection + "_summaries", tf.histogram_summary(
         "normalized_input", normalized))
 
     head = add_conv_layer(normalized, channels=32,
-                             kernel_size=8, stride=4, Collection=Collection)
+                          kernel_size=8, stride=4, Collection=Collection)
     head = add_conv_layer(head, channels=64,
-                             kernel_size=4, stride=2, Collection=Collection)
+                          kernel_size=4, stride=2, Collection=Collection)
     head = add_conv_layer(head, channels=64,
-                             kernel_size=3, stride=1, Collection=Collection)
+                          kernel_size=3, stride=1, Collection=Collection)
 
     h_conv3_shape = head.get_shape().as_list()
     head = tf.reshape(
@@ -129,7 +133,7 @@ def clipped_l2(y, y_t, grad_clip=1):
         batch_delta_quadratic = tf.minimum(batch_delta_abs, grad_clip)
         batch_delta_linear = (
             batch_delta_abs - batch_delta_quadratic) * grad_clip
-        batch = batch_delta_linear + batch_delta_quadratic**2/2
+        batch = batch_delta_linear + batch_delta_quadratic**2 / 2
     return batch
 
 
@@ -157,14 +161,17 @@ def build_train_op(Q, Y, action, config):
         tf.add_to_collection("DQN_summaries", tf.scalar_summary(
             "main/acted_Q_0", DQN_acted[0]))
         tf.add_to_collection("DQN_summaries", tf.scalar_summary(
-            "main/acted_Q_max", tf.reduce_max(DQN_acted) ))
+            "main/acted_Q_max", tf.reduce_max(DQN_acted)))
         tf.add_to_collection("DQN_summaries", tf.scalar_summary(
-            "main/Y_max", tf.reduce_max(Y) ))
+            "main/Y_max", tf.reduce_max(Y)))
 
-    opti = tf.train.RMSPropOptimizer(config.learning_rate, 0.95, 0.95, 0.01)
-    grads = opti.compute_gradients(loss)
+    #opti = tf.train.RMSPropOptimizer(config.learning_rate, 0.95, 0.95, 0.01)
+    #opti = tf.train.RMSPropOptimizer(learning_rate=config.learning_rate, decay=0.95, momentum=0.0, epsilon=0.01)
+    train_op, grads = build_rmsprop_optimizer(
+        loss, config.learning_rate, 0.95, 0.01, 1, "graves_rmsprop")
+    #grads = opti.compute_gradients(loss)
 
-    train_op = opti.apply_gradients(grads)
+    #train_op = opti.apply_gradients(grads)
 
     for grad, var in grads:
         if grad is not None:
@@ -172,3 +179,52 @@ def build_train_op(Q, Y, action, config):
                 var.op.name + '/gradients', grad, name=var.op.name + '/gradients'))
 
     return train_op
+
+
+def build_rmsprop_optimizer(loss, learning_rate, rmsprop_decay, rmsprop_constant, gradient_clip, version):
+    with tf.name_scope('rmsprop'):
+        optimizer = None
+        if version == 'rmsprop':
+            optimizer = tf.train.RMSPropOptimizer(
+                learning_rate, decay=rmsprop_decay, momentum=0.0, epsilon=rmsprop_constant)
+        elif version == 'graves_rmsprop':
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+
+        grads_and_vars = optimizer.compute_gradients(loss)
+
+        grads = []
+        params = []
+        for p in grads_and_vars:
+            if p[0] == None:
+                continue
+            grads.append(p[0])
+            params.append(p[1])
+        #grads = [gv[0] for gv in grads_and_vars]
+        #params = [gv[1] for gv in grads_and_vars]
+        if gradient_clip > 0:
+            grads = tf.clip_by_global_norm(grads, gradient_clip)[0]
+
+        if version == 'rmsprop':
+            return optimizer.apply_gradients(zip(grads, params))
+        elif version == 'graves_rmsprop':
+            square_grads = [tf.square(grad) for grad in grads]
+
+            avg_grads = [tf.Variable(tf.zeros(var.get_shape()))
+                         for var in params]
+            avg_square_grads = [tf.Variable(
+                tf.zeros(var.get_shape())) for var in params]
+
+            update_avg_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * grad_pair[1]))
+                                for grad_pair in zip(avg_grads, grads)]
+            update_avg_square_grads = [grad_pair[0].assign((rmsprop_decay * grad_pair[0]) + ((1 - rmsprop_decay) * tf.square(grad_pair[1])))
+                                       for grad_pair in zip(avg_square_grads, grads)]
+            avg_grad_updates = update_avg_grads + update_avg_square_grads
+
+            rms = [tf.sqrt(avg_grad_pair[1] - tf.square(avg_grad_pair[0]) + rmsprop_constant)
+                   for avg_grad_pair in zip(avg_grads, avg_square_grads)]
+
+            rms_updates = [grad_rms_pair[0] / grad_rms_pair[1]
+                           for grad_rms_pair in zip(grads, rms)]
+            train = optimizer.apply_gradients(zip(rms_updates, params))
+
+            return tf.group(train, tf.group(*avg_grad_updates)), grads_and_vars
