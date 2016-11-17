@@ -246,6 +246,7 @@ for episode in range(global_episode, num_episodes + global_episode):
         if ale.game_over():
             terminal = True
         if lives != ale.lives() or terminal:
+            lives = ale.lives()
             pseudo_terminal = True
         RM.add(state[0, :, :, config.buff_size -1], action, clipped_reward, pseudo_terminal)
         update_params()
