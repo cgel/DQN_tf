@@ -1,12 +1,11 @@
-
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("-batch_size", type=int, default=32)
 parser.add_argument("-replay_memory_capacity", type=int, default=1000000)
-parser.add_argument("-steps_before_training", type=int, default=50000)
-parser.add_argument("-exploration_steps", type=int, default=1000000)
-parser.add_argument("-sync_rate", type=int, default=10000)
-parser.add_argument("-save_summary_rate", type=int, default=1000)
+parser.add_argument("-steps_before_training", type=int, default=12500)
+parser.add_argument("-exploration_steps", type=int, default=250000)
+parser.add_argument("-sync_rate", type=int, default=2500)
+parser.add_argument("-save_summary_rate", type=int, default=5000)
 parser.add_argument("-device", default="/gpu:0")
 parser.add_argument("-gamma", type=float, default=0.99)
 parser.add_argument("-learning_rate", type=float, default=0.00025)
@@ -84,7 +83,7 @@ with tf.device(config.device):
     ph_lst = [input_state_ph, action_ph, Y_ph]
 
     q = tf.FIFOQueue(2, [ph.dtype for ph in ph_lst],
-                     [ph.get_shape() for ph in ph_lst])
+                     [ph.get_shape() for ph in ph_lst]  )
     enqueue_op = q.enqueue(ph_lst)
     input_state, action, Y = q.dequeue()
 
