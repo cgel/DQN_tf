@@ -105,7 +105,7 @@ def hidden_state_to_Q(hidden_state, _name, action_num, Collection):
 
 def createQNetwork(input_state, action, config, Collection=None):
     action_num = config.action_num
-    normalized = input_state / 128. - 1.
+    normalized = input_state / 256.
     tf.add_to_collection(Collection + "_summaries", tf.histogram_summary(
         "normalized_input", normalized))
 
@@ -135,7 +135,6 @@ def clipped_l2(y, y_t, grad_clip=1):
             batch_delta_abs - batch_delta_quadratic) * grad_clip
         batch = batch_delta_linear + batch_delta_quadratic**2 / 2
     return batch
-
 
 def build_train_op(Q, Y, action, config):
     action_num = config.action_num
