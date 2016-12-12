@@ -20,7 +20,7 @@ def xavier_std(in_size, out_size):
 
 def get_var(name, size, initializer, Collection):
     w = tf.get_variable(name, size, initializer=initializer,
-                        collections=[Collection + "_weights"])
+                        collections=[Collection + "_weights", tf.GraphKeys.VARIABLES])
     if tf.get_variable_scope().reuse == False:
         tf.add_to_collection(Collection + "_summaries",
                              tf.histogram_summary(w.op.name, w))
